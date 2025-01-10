@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cholera Prediction Map</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+        }
+
+        h1 {
+            font-size: 36px;
+            text-align: center;
+            margin-top: 20px; /* Add spacing between top of page and heading */
+            padding: 10px;
+            background-color: #007BFF;
+            color: white;
+            border-radius: 10px;
+        }
+
+        #map {
+            height: 600px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 1200px;
+            margin-left: 220px; /* Adjusted to accommodate the sidebar */
+        }
+
+        #sidebar {
+            width: 220px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            height: 100%;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #sidebar h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        .feature-button {
+            display: block;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+
+        .feature-button.selected {
+            background-color: #28a745;
+        }
+
+        .feature-button:hover {
+            background-color: #0056b3;
+        }
+
+        #logo {
+            width: 100%;
+            max-width: 200px;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cholera Case Prediction</h1>
+
+    <div id="sidebar">
+        <img src="{{ url_for('static', filename='eHA-logo-blue_320x132.png') }}" alt="Logo" id="logo">
+        <h2>Select Features</h2>
+        {% for feature in all_features %}
+            <button class="feature-button" id="btn-{{ feature }}" onclick="toggleFeature('{{ feature }}')">
+                {{ feature }}
+            </button>
+        {% endfor %}
+    </div>
+
+    <div id="map">
+        {{ map_html | safe }}
+    </div>
+
+    <script>
+        let selectedFeatures = [];
+
+        function toggleFeature(feature) {
+            const button = document.getElementById('btn-' + feature);
+            
+            if (selectedFeatures.includes(feature)) {
+                selectedFeatures = selectedFeatures.filter(f => f !== feature);
+                button.classList.remove('selected');
+            } else {
+                selectedFeatures.push(feature);
+                button.classList.add('selected');
+            }
+
+            fetch('/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ selected_features: selectedFeatures })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('map').innerHTML = data.map_html;
+            });
+        }
+    </script>
+</body>
+</html>
