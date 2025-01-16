@@ -4,13 +4,19 @@ from flask import Flask, render_template, jsonify, request
 import folium
 from folium import Choropleth
 from sklearn.preprocessing import StandardScaler
+from flask_ngrok import run_with_ngrok
+from pyngrok import ngrok
 
 app = Flask(__name__)
 
+# Ensure Flask is running on all network interfaces (0.0.0.0) for ngrok to tunnel properly
+public_url = ngrok.connect(5000)
+print(f" * ngrok tunnel \"{public_url}\" -> http://127.0.0.1:5000")
+
 # Paths to model, scaler, and shapefile
-model_path = r"C:\Users\victor.idakwo\Documents\ehealth Africa\TASK\Cholera-Project-main\New-Cholera-Project\Yobe\Yobe state\models\random-forest-model.joblib"
-scaler_path = r"C:\Users\victor.idakwo\Documents\ehealth Africa\TASK\Cholera-Project-main\New-Cholera-Project\Yobe\Yobe state\models\scaler_rf.joblib"
-data_path = r"C:\Users\victor.idakwo\Documents\ehealth Africa\TASK\Cholera-Project-main\New-Cholera-Project\Yobe\Yobe state\Population_Cholera.shp"
+model_path = "/content/drive/MyDrive/Colab Notebooks/Cholera Modeling and Prediction/Yobe state/models/random-forest-model.joblib"
+scaler_path = "/content/drive/MyDrive/Colab Notebooks/Cholera Modeling and Prediction/Yobe state/models/scaler_rf.joblib"
+data_path = "/content/drive/MyDrive/Colab Notebooks/Cholera Modeling and Prediction/Yobe state/Population_Cholera.shp"
 
 # Load the trained model and scaler
 trained_model = joblib.load(model_path)
@@ -25,7 +31,10 @@ if prediction_data.crs.to_epsg() != 4326:
 
 # Features for prediction
 all_features = ['Aspect', 'Elevatn', 'builtupr', 'LST', 'LULCC', 'NDVI', 'NDWI', 'PopDnsty', 'Poverty', 'Prcpittn', 'Slope', 'rwi']
-selected_features = all_features.copy()  # Initially, all features are selected
+display_features = ['Aspect', 'Elevation', 'builtup Area', 'LST', 'Land use/Cover', 'NDVI', 'NDWI', 'Pop Density', 'Poverty', 'Precipitation', 'Slope', 'Relative Wealth Index']
+
+# Initially, all features are selected
+selected_features = all_features.copy()
 
 # Function to generate the map based on selected features
 def update_map(selected_features):
@@ -84,7 +93,7 @@ def update_map(selected_features):
 def index():
     # Initially, load the map with all features selected
     map_html = update_map(selected_features)
-    return render_template('index.html', map_html=map_html, all_features=all_features)
+    return render_template('index.html', map_html=map_html, all_features=display_features)
 
 @app.route('/update', methods=['POST'])
 def update():
@@ -95,4 +104,5 @@ def update():
     return jsonify(map_html=map_html)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Run the Flask app on all available interfaces (0.0.0.0)
+    app.run(host='0.0.0.0', port=5000)
