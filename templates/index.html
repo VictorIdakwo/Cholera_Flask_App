@@ -22,10 +22,8 @@
 
         #map {
             height: 600px;
-            margin-top: 20px;
-            width: 100%;
-            max-width: 1200px;
-            margin-left: 220px; /* Adjusted to accommodate the sidebar */
+            width: calc(100% - 240px);
+            margin-left: 240px; /* Adjusted to accommodate the sidebar */
         }
 
         #sidebar {
@@ -37,23 +35,25 @@
             background-color: #f4f4f4;
             height: 100%;
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
         }
 
         #sidebar h2 {
             font-size: 18px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
 
         .feature-button {
             display: block;
             padding: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             background-color: #007BFF;
             color: white;
             border: none;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
             width: 100%;
+            border-radius: 5px;
         }
 
         .feature-button.selected {
@@ -69,6 +69,23 @@
             max-width: 200px;
             height: auto;
         }
+
+        #year-slider-container {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 2px solid #ccc;
+        }
+
+        #year-slider {
+            width: 100%;
+        }
+
+        #year-label {
+            font-weight: bold;
+            text-align: center;
+            display: block;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -76,12 +93,19 @@
 
     <div id="sidebar">
         <img src="{{ url_for('static', filename='eHA-logo-blue_320x132.png') }}" alt="Logo" id="logo">
+        
         <h2>Select Features</h2>
         {% for feature in all_features %}
             <button class="feature-button" id="btn-{{ feature }}" onclick="toggleFeature('{{ feature }}')">
                 {{ feature }}
             </button>
         {% endfor %}
+
+        <div id="year-slider-container">
+            <h2>Select Year</h2>
+            <input type="range" id="year-slider" min="2025" max="2033" value="{{ year }}" step="1" oninput="updateYearLabel(this.value)">
+            <span id="year-label">{{ year }}</span>
+        </div>
     </div>
 
     <div id="map">
@@ -90,6 +114,7 @@
 
     <script>
         let selectedFeatures = [];
+        let selectedYear = {{ year }};
 
         function toggleFeature(feature) {
             const button = document.getElementById('btn-' + feature);
@@ -102,12 +127,22 @@
                 button.classList.add('selected');
             }
 
+            updateMap();
+        }
+
+        function updateYearLabel(year) {
+            document.getElementById("year-label").innerText = year;
+            selectedYear = year;
+            updateMap();
+        }
+
+        function updateMap() {
             fetch('/update', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ selected_features: selectedFeatures })
+                body: JSON.stringify({ selected_features: selectedFeatures, year: selectedYear })
             })
             .then(response => response.json())
             .then(data => {
