@@ -98,16 +98,16 @@
         <img src="{{ url_for('static', filename='eHA-logo-blue_320x132.png') }}" alt="Logo" id="logo">
         
         <h2>Select Features</h2>
-        {% for feature in all_features %}
-            <button class="feature-button" id="btn-{{ feature }}" onclick="toggleFeature('{{ feature }}')">
-                {{ feature }}
+        {% for i in range(all_features|length) %}
+            <button class="feature-button" id="btn-{{ all_features[i] }}" onclick="toggleFeature('{{ all_features[i] }}')">
+                {{ display_features[i] }}
             </button>
         {% endfor %}
 
         <div id="year-slider-container">
             <h2>Select Year</h2>
-            <input type="range" id="year-slider" min="2024" max="2033" value="2024" step="1" oninput="updateYearLabel(this.value)">
-            <span id="year-label">2024</span>
+            <input type="range" id="year-slider" min="2024" max="2033" value="{{ year }}" step="1" oninput="updateYearLabel(this.value)">
+            <span id="year-label">{{ year }}</span>
         </div>
     </div>
 
@@ -117,7 +117,7 @@
 
     <script>
         let selectedFeatures = [];
-        let selectedYear = 2024;
+        let selectedYear = {{ year }};
 
         function toggleFeature(feature) {
             const button = document.getElementById('btn-' + feature);
@@ -142,18 +142,16 @@
         function updateMap() {
             fetch('/update', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ selected_features: selectedFeatures, year: selectedYear })
             })
             .then(response => response.json())
             .then(data => {
-                document.getElementById('map').innerHTML = data.map_html;
+                let mapContainer = document.getElementById('map');
+                mapContainer.innerHTML = data.map_html;
             });
         }
 
-        // Ensure the default map is displayed when the page loads
         document.addEventListener("DOMContentLoaded", function () {
             updateMap();
         });
