@@ -1,23 +1,3 @@
-import geopandas as gpd
-import joblib
-from flask import Flask, render_template, jsonify, request
-import folium
-from folium import Choropleth
-from sklearn.preprocessing import StandardScaler
-from pyngrok import ngrok
-import numpy as np
-
-app = Flask(__name__)
-
-# Ensure Flask runs on all network interfaces for ngrok
-public_url = ngrok.connect(5000)
-print(f" * ngrok tunnel \"{public_url}\" -> http://127.0.0.1:5000")
-
-# Paths to model, scaler, and shapefile
-model_path = "/content/drive/MyDrive/Colab Notebooks/Cholera Modeling and Prediction/Yobe state/models/random-forest-model.joblib"
-scaler_path = "/content/drive/MyDrive/Colab Notebooks/Cholera Modeling and Prediction/Yobe state/models/scaler_rf.joblib"
-data_path = "/content/drive/MyDrive/Colab Notebooks/Cholera Modeling and Prediction/Yobe state/Population_Cholera.shp"
-
 # Load trained model and scaler
 trained_model = joblib.load(model_path)
 scaler = joblib.load(scaler_path)
@@ -25,8 +5,8 @@ scaler = joblib.load(scaler_path)
 # Load shapefile (GeoDataFrame)
 prediction_data = gpd.read_file(data_path)
 
-# Ensure CRS is set to EPSG:4326 (WGS84)
-if prediction_data.crs.to_epsg() != 4326:
+# Ensure CRS is correctly set to EPSG:4326
+if prediction_data.crs is None or prediction_data.crs.to_epsg() != 4326:
     prediction_data = prediction_data.to_crs(epsg=4326)
 
 # Features for prediction
@@ -38,31 +18,30 @@ base_year = 2024
 
 # Function to modify features based on future years
 def adjust_for_future(X_pred, year):
-    year_diff = year - base_year  
-
+    year_diff = year - base_year
     if year_diff > 0:
         X_pred['PopDnsty'] *= (1 + 0.02 * year_diff)  
         X_pred['Prcpittn'] *= (1 + 0.01 * year_diff)  
         X_pred['LST'] += 0.5 * year_diff  
-
     return X_pred
 
 # Function to update the map
 def update_map(selected_features, year):
     X_pred = prediction_data[all_features].copy()
 
+    # Adjust only selected features, use mean for others
     for feature in all_features:
         if feature not in selected_features:
-            X_pred[feature] = X_pred[feature].mean()  
+            X_pred[feature] = X_pred[feature].mean()
 
     X_pred = adjust_for_future(X_pred, year)
-    X_pred = X_pred.fillna(X_pred.mean())
+    X_pred = X_pred.fillna(X_pred.mean())  # Handle missing values
 
     X_pred_scaled = scaler.transform(X_pred)
-
     predictions = trained_model.predict(X_pred_scaled)
     prediction_data['pred_cases'] = predictions.astype(int)
 
+    # Ensure ward_name exists
     if 'ward_name' not in prediction_data.columns:
         prediction_data['ward_name'] = [f"Ward {i}" for i in range(len(prediction_data))]
 
