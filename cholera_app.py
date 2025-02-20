@@ -33,56 +33,42 @@ if prediction_data.crs.to_epsg() != 4326:
 all_features = ['Aspect', 'Elevatn', 'builtupr', 'LST', 'LULCC', 'NDVI', 'NDWI', 'PopDnsty', 'Poverty', 'Prcpittn', 'Slope', 'rwi']
 display_features = ['Aspect', 'Elevation', 'Built-up Area', 'LST', 'Land use/Cover', 'NDVI', 'NDWI', 'Pop Density', 'Poverty', 'Precipitation', 'Slope', 'Relative Wealth Index']
 
-# Default: all features selected
-selected_features = all_features.copy()
-
 # Base year
 base_year = 2024
 
 # Function to modify features based on future years
 def adjust_for_future(X_pred, year):
-    """Adjusts features like population and climate conditions for the selected year."""
-    year_diff = year - base_year  # Calculate how far into the future
+    year_diff = year - base_year  
 
     if year_diff > 0:
-        X_pred['PopDnsty'] *= (1 + 0.02 * year_diff)  # 2% yearly population growth
-        X_pred['Prcpittn'] *= (1 + 0.01 * year_diff)  # 1% increase in precipitation
-        X_pred['LST'] += 0.5 * year_diff  # Temperature rise
+        X_pred['PopDnsty'] *= (1 + 0.02 * year_diff)  
+        X_pred['Prcpittn'] *= (1 + 0.01 * year_diff)  
+        X_pred['LST'] += 0.5 * year_diff  
 
     return X_pred
 
 # Function to update the map
 def update_map(selected_features, year):
-    """Generates and updates the map based on selected features and future year changes."""
     X_pred = prediction_data[all_features].copy()
 
-    # Set unselected features to mean values instead of zero
     for feature in all_features:
         if feature not in selected_features:
             X_pred[feature] = X_pred[feature].mean()  
 
-    # Adjust for future years
     X_pred = adjust_for_future(X_pred, year)
-
-    # Handle missing values
     X_pred = X_pred.fillna(X_pred.mean())
 
-    # Scale features
     X_pred_scaled = scaler.transform(X_pred)
 
-    # Make predictions
     predictions = trained_model.predict(X_pred_scaled)
     prediction_data['pred_cases'] = predictions.astype(int)
 
-    # Ensure 'ward_name' exists in the data
     if 'ward_name' not in prediction_data.columns:
         prediction_data['ward_name'] = [f"Ward {i}" for i in range(len(prediction_data))]
 
-    # Map center
     center = prediction_data.geometry.centroid.unary_union.centroid
     m = folium.Map(location=[center.y, center.x], zoom_start=8)
 
-    # Add choropleth layer
     Choropleth(
         geo_data=prediction_data,
         data=prediction_data,
@@ -94,7 +80,6 @@ def update_map(selected_features, year):
         legend_name=f'Predicted Cholera Cases in {year}'
     ).add_to(m)
 
-    # Add tooltips for interactive display
     for _, row in prediction_data.iterrows():
         folium.GeoJson(
             row.geometry,
@@ -110,17 +95,15 @@ def update_map(selected_features, year):
 
 @app.route('/')
 def index():
-    """Renders the main page with the initial map."""
-    year = base_year  # Default starting year (2024)
-    map_html = update_map(selected_features, year)
-    return render_template('index.html', map_html=map_html, all_features=display_features, year=year)
+    year = base_year
+    map_html = update_map(all_features, year)
+    return render_template('index.html', map_html=map_html, all_features=all_features, display_features=display_features, year=year)
 
 @app.route('/update', methods=['POST'])
 def update():
-    """Handles feature and year updates dynamically."""
     data = request.json
-    selected_features = data.get('selected_features', all_features)  # Ensure default features
-    year = int(data.get('year', base_year))  # Get selected year
+    selected_features = data.get('selected_features', all_features)  
+    year = int(data.get('year', base_year))  
     map_html = update_map(selected_features, year)
     return jsonify(map_html=map_html)
 
