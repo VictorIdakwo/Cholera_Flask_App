@@ -13,17 +13,16 @@
         h1 {
             font-size: 36px;
             text-align: center;
-            margin-top: 20px;
-            padding: 10px;
+            margin: 0;
+            padding: 15px;
             background-color: #007BFF;
             color: white;
-            border-radius: 10px;
         }
 
         #map {
             height: 600px;
-            width: calc(100% - 240px);
-            margin-left: 240px;
+            margin-left: 220px;
+            transition: margin-left 0.3s;
         }
 
         #sidebar {
@@ -36,11 +35,20 @@
             height: 100%;
             box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
             overflow-y: auto;
+            transition: transform 0.3s;
         }
 
-        #sidebar h2 {
-            font-size: 18px;
-            margin-bottom: 10px;
+        .hidden { transform: translateX(-220px); }
+
+        #toggle-sidebar {
+            position: absolute;
+            right: -30px;
+            top: 10px;
+            background: #007BFF;
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            cursor: pointer;
         }
 
         .feature-button {
@@ -51,7 +59,6 @@
             color: white;
             border: none;
             cursor: pointer;
-            font-size: 14px;
             width: 100%;
             border-radius: 5px;
         }
@@ -62,12 +69,6 @@
 
         .feature-button:hover {
             background-color: #0056b3;
-        }
-
-        #logo {
-            width: 100%;
-            max-width: 200px;
-            height: auto;
         }
 
         #year-slider-container {
@@ -83,7 +84,6 @@
 
         #year-label {
             font-weight: bold;
-            text-align: center;
             display: block;
             margin-top: 5px;
             font-size: 18px;
@@ -95,11 +95,12 @@
     <h1>Cholera Case Prediction</h1>
 
     <div id="sidebar">
-        <img src="{{ url_for('static', filename='eHA-logo-blue_320x132.png') }}" alt="Logo" id="logo">
+        <span id="toggle-sidebar">☰</span>
+        <img src="{{ url_for('static', filename='eHA-logo-blue_320x132.png') }}" alt="Logo" style="width: 100%; max-width: 200px;">
         
         <h2>Select Features</h2>
         {% for i in range(all_features|length) %}
-            <button class="feature-button" id="btn-{{ all_features[i] }}" onclick="toggleFeature('{{ all_features[i] }}')">
+            <button class="feature-button selected" id="btn-{{ all_features[i] }}" onclick="toggleFeature('{{ all_features[i] }}')">
                 {{ display_features[i] }}
             </button>
         {% endfor %}
@@ -116,18 +117,17 @@
     </div>
 
     <script>
-        let selectedFeatures = [];
+        let selectedFeatures = {{ all_features | tojson }};
         let selectedYear = {{ year }};
-
+        
         function toggleFeature(feature) {
             const button = document.getElementById('btn-' + feature);
-            
-            if (selectedFeatures.includes(feature)) {
-                selectedFeatures = selectedFeatures.filter(f => f !== feature);
-                button.classList.remove('selected');
-            } else {
+            button.classList.toggle('selected');
+
+            if (button.classList.contains('selected')) {
                 selectedFeatures.push(feature);
-                button.classList.add('selected');
+            } else {
+                selectedFeatures = selectedFeatures.filter(f => f !== feature);
             }
 
             updateMap();
@@ -146,14 +146,15 @@
                 body: JSON.stringify({ selected_features: selectedFeatures, year: selectedYear })
             })
             .then(response => response.json())
-            .then(data => {
-                let mapContainer = document.getElementById('map');
-                mapContainer.innerHTML = data.map_html;
-            });
+            .then(data => document.getElementById('map').innerHTML = data.map_html);
         }
 
         document.addEventListener("DOMContentLoaded", function () {
             updateMap();
+            document.getElementById('toggle-sidebar').addEventListener('click', function () {
+                document.getElementById('sidebar').classList.toggle('hidden');
+                document.getElementById('map').style.marginLeft = document.getElementById('sidebar').classList.contains('hidden') ? "0" : "220px";
+            });
         });
     </script>
 </body>
