@@ -1,3 +1,24 @@
+import geopandas as gpd
+import joblib
+from flask import Flask, render_template, jsonify, request
+import folium
+from folium import Choropleth
+from sklearn.preprocessing import StandardScaler
+from flask_ngrok import run_with_ngrok
+from pyngrok import ngrok
+
+app = Flask(__name__)
+
+# Ensure Flask is running on all network interfaces (0.0.0.0) for ngrok to tunnel properly
+public_url = ngrok.connect(5000)
+print(f" * ngrok tunnel \"{public_url}\" -> http://127.0.0.1:5000")
+
+# Paths to model, scaler, and shapefile
+model_path = "/content/drive/MyDrive/Colab Notebooks/Cholera Modeling and Prediction/Yobe state/models/random-forest-model.joblib"
+scaler_path = "/content/drive/MyDrive/Colab Notebooks/Cholera Modeling and Prediction/Yobe state/models/scaler_rf.joblib"
+data_path = "/content/drive/MyDrive/Colab Notebooks/Cholera Modeling and Prediction/Yobe state/Population_Cholera.shp"
+
+
 # Load trained model and scaler
 trained_model = joblib.load(model_path)
 scaler = joblib.load(scaler_path)
