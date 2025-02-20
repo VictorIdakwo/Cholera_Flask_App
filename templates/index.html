@@ -23,7 +23,7 @@
         #map {
             height: 600px;
             width: calc(100% - 240px);
-            margin-left: 240px; /* Adjusted to accommodate the sidebar */
+            margin-left: 240px;
         }
 
         #sidebar {
@@ -115,7 +115,9 @@
     <script>
         let selectedFeatures = [];
         let selectedYear = {{ year }};
+        let lastSelectedYear = selectedYear;
 
+        // Function to toggle features on button click
         function toggleFeature(feature) {
             const button = document.getElementById('btn-' + feature);
             
@@ -130,12 +132,19 @@
             updateMap();
         }
 
+        // Function to update year label and trigger map update
         function updateYearLabel(year) {
             document.getElementById("year-label").innerText = year;
-            selectedYear = year;
-            updateMap();
+            selectedYear = parseInt(year, 10);
+
+            // Prevent redundant updates if year hasn't changed
+            if (selectedYear !== lastSelectedYear) {
+                lastSelectedYear = selectedYear;
+                updateMap();
+            }
         }
 
+        // Function to update map based on selected features and year
         function updateMap() {
             fetch('/update', {
                 method: 'POST',
@@ -149,6 +158,17 @@
                 document.getElementById('map').innerHTML = data.map_html;
             });
         }
+
+        // Ensure pre-selected features are highlighted on page load
+        document.addEventListener("DOMContentLoaded", function () {
+            let buttons = document.querySelectorAll(".feature-button");
+            buttons.forEach(button => {
+                let feature = button.innerText.trim();
+                if (selectedFeatures.includes(feature)) {
+                    button.classList.add("selected");
+                }
+            });
+        });
     </script>
 </body>
 </html>
