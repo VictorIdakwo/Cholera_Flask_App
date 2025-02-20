@@ -18,11 +18,11 @@ model_path = "/content/drive/MyDrive/Colab Notebooks/Cholera Modeling and Predic
 scaler_path = "/content/drive/MyDrive/Colab Notebooks/Cholera Modeling and Prediction/Yobe state/models/scaler_rf.joblib"
 data_path = "/content/drive/MyDrive/Colab Notebooks/Cholera Modeling and Prediction/Yobe state/Population_Cholera.shp"
 
-# Load the trained model and scaler
+# Load trained model and scaler
 trained_model = joblib.load(model_path)
 scaler = joblib.load(scaler_path)
 
-# Load the shapefile (GeoDataFrame)
+# Load shapefile (GeoDataFrame)
 prediction_data = gpd.read_file(data_path)
 
 # Ensure CRS is set to EPSG:4326 (WGS84)
@@ -36,49 +36,50 @@ display_features = ['Aspect', 'Elevation', 'Built-up Area', 'LST', 'Land use/Cov
 # Default: all features selected
 selected_features = all_features.copy()
 
-# Default base year
+# Base year
 base_year = 2024
 
-# Function to modify features based on future year
+# Function to modify features based on future years
 def adjust_for_future(X_pred, year):
-    """Adjusts population, precipitation, and other features based on the selected year."""
-    year_difference = year - base_year  # Difference in years
+    """Adjusts features like population and climate conditions for the selected year."""
+    year_diff = year - base_year  # Calculate how far into the future
 
-    if year_difference > 0:
-        # Example of applying changes over time:
-        X_pred['PopDnsty'] *= (1 + 0.02 * year_difference)  # Assume 2% yearly population growth
-        X_pred['Prcpittn'] *= (1 + 0.01 * year_difference)  # Assume 1% increase in precipitation
-        X_pred['LST'] += 0.5 * year_difference  # Assume gradual temperature increase
+    if year_diff > 0:
+        X_pred['PopDnsty'] *= (1 + 0.02 * year_diff)  # 2% yearly population growth
+        X_pred['Prcpittn'] *= (1 + 0.01 * year_diff)  # 1% increase in precipitation
+        X_pred['LST'] += 0.5 * year_diff  # Temperature rise
 
     return X_pred
 
-# Function to generate the map based on selected features and year
+# Function to update the map
 def update_map(selected_features, year):
-    """Updates the prediction map based on selected features and future year adjustments."""
+    """Generates and updates the map based on selected features and future year changes."""
     X_pred = prediction_data[all_features].copy()
 
-    # Set unselected features to zero
+    # Set unselected features to mean values instead of zero
     for feature in all_features:
         if feature not in selected_features:
-            X_pred[feature] = 0  
+            X_pred[feature] = X_pred[feature].mean()  
 
-    # Adjust features for future years
+    # Adjust for future years
     X_pred = adjust_for_future(X_pred, year)
 
     # Handle missing values
     X_pred = X_pred.fillna(X_pred.mean())
 
-    # Scale the prediction data
+    # Scale features
     X_pred_scaled = scaler.transform(X_pred)
 
     # Make predictions
     predictions = trained_model.predict(X_pred_scaled)
     prediction_data['pred_cases'] = predictions.astype(int)
 
-    # Calculate center of the map
-    center = prediction_data.geometry.centroid.unary_union.centroid
+    # Ensure 'ward_name' exists in the data
+    if 'ward_name' not in prediction_data.columns:
+        prediction_data['ward_name'] = [f"Ward {i}" for i in range(len(prediction_data))]
 
-    # Create Folium map
+    # Map center
+    center = prediction_data.geometry.centroid.unary_union.centroid
     m = folium.Map(location=[center.y, center.x], zoom_start=8)
 
     # Add choropleth layer
@@ -89,19 +90,19 @@ def update_map(selected_features, year):
         key_on='feature.properties.ward_name',
         fill_color='YlOrRd',
         fill_opacity=1.0,
-        line_opacity=0.1,
-        legend_name=f'Predicted Cases in {year}'
+        line_opacity=0.2,
+        legend_name=f'Predicted Cholera Cases in {year}'
     ).add_to(m)
 
-    # Add tooltips
+    # Add tooltips for interactive display
     for _, row in prediction_data.iterrows():
         folium.GeoJson(
             row.geometry,
             tooltip=folium.Tooltip(
-                f"Predicted Cases: {row['pred_cases']}<br>"
-                f"Ward: {row['ward_name']}<br>"
-                f"LGA: {row['lga_name']}<br>"
-                f"Year: {year}"
+                f"<b>Predicted Cases:</b> {row['pred_cases']}<br>"
+                f"<b>Ward:</b> {row['ward_name']}<br>"
+                f"<b>LGA:</b> {row.get('lga_name', 'Unknown')}<br>"
+                f"<b>Year:</b> {year}"
             ),
         ).add_to(m)
 
@@ -109,19 +110,19 @@ def update_map(selected_features, year):
 
 @app.route('/')
 def index():
-    """Renders the main page with the default map."""
+    """Renders the main page with the initial map."""
     year = base_year  # Default starting year (2024)
     map_html = update_map(selected_features, year)
     return render_template('index.html', map_html=map_html, all_features=display_features, year=year)
 
 @app.route('/update', methods=['POST'])
 def update():
-    """Handles feature and year selection updates."""
+    """Handles feature and year updates dynamically."""
     data = request.json
-    selected_features = data['selected_features']
-    year = int(data['year'])  # Get selected year
+    selected_features = data.get('selected_features', all_features)  # Ensure default features
+    year = int(data.get('year', base_year))  # Get selected year
     map_html = update_map(selected_features, year)
     return jsonify(map_html=map_html)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
