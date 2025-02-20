@@ -74,6 +74,7 @@
             margin-top: 20px;
             padding-top: 10px;
             border-top: 2px solid #ccc;
+            text-align: center;
         }
 
         #year-slider {
@@ -85,6 +86,8 @@
             text-align: center;
             display: block;
             margin-top: 5px;
+            font-size: 18px;
+            color: #333;
         }
     </style>
 </head>
@@ -103,8 +106,8 @@
 
         <div id="year-slider-container">
             <h2>Select Year</h2>
-            <input type="range" id="year-slider" min="2025" max="2033" value="{{ year }}" step="1" oninput="updateYearLabel(this.value)">
-            <span id="year-label">{{ year }}</span>
+            <input type="range" id="year-slider" min="2024" max="2033" value="2024" step="1" oninput="updateYearLabel(this.value)">
+            <span id="year-label">2024</span>
         </div>
     </div>
 
@@ -114,10 +117,8 @@
 
     <script>
         let selectedFeatures = [];
-        let selectedYear = {{ year }};
-        let lastSelectedYear = selectedYear;
+        let selectedYear = 2024;
 
-        // Function to toggle features on button click
         function toggleFeature(feature) {
             const button = document.getElementById('btn-' + feature);
             
@@ -132,19 +133,12 @@
             updateMap();
         }
 
-        // Function to update year label and trigger map update
         function updateYearLabel(year) {
             document.getElementById("year-label").innerText = year;
             selectedYear = parseInt(year, 10);
-
-            // Prevent redundant updates if year hasn't changed
-            if (selectedYear !== lastSelectedYear) {
-                lastSelectedYear = selectedYear;
-                updateMap();
-            }
+            updateMap();
         }
 
-        // Function to update map based on selected features and year
         function updateMap() {
             fetch('/update', {
                 method: 'POST',
@@ -159,15 +153,9 @@
             });
         }
 
-        // Ensure pre-selected features are highlighted on page load
+        // Ensure the default map is displayed when the page loads
         document.addEventListener("DOMContentLoaded", function () {
-            let buttons = document.querySelectorAll(".feature-button");
-            buttons.forEach(button => {
-                let feature = button.innerText.trim();
-                if (selectedFeatures.includes(feature)) {
-                    button.classList.add("selected");
-                }
-            });
+            updateMap();
         });
     </script>
 </body>
